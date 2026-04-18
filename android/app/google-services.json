@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "909928306188",
+    "project_id": "thachinchord",
+    "storage_bucket": "thachinchord.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:909928306188:android:5dc6b49429c63c3b938029",
+        "android_client_info": {
+          "package_name": "com.example.thachinchord"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_-hsp-tUqUjcbvsRwS1Y1hK_HxV9rm_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
