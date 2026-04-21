@@ -1,43 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:thachinchord/auth/signup.dart'; // Your SignUpScreen
 import 'package:thachinchord/ui/user.dart';
 import '../provider/auth_provider.dart';
 
-class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends ConsumerStatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   void _togglePasswordVisibility() {
     setState(() => _obscurePassword = !_obscurePassword);
   }
 
-  /// Unified handler – now navigates on success
-  Future<void> _handleLogin(Future<void> Function() loginMethod) async {
-    if (_isLoading) return;
+  void _toggleConfirmPasswordVisibility() {
+    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+  }
+
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      await loginMethod();
+      await ref
+          .read(authServiceProvider)
+          .signUp(_emailController.text.trim(), _passwordController.text);
 
-      // SUCCESS → Navigate to Home Screen and clear login from stack
       if (mounted) {
-        Navigator.pushAndRemoveUntil(
+        // SUCCESS → Go to Home Screen (UserApp) and remove SignUp from navigation stack
+        Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const UserApp()),
-          (route) => false, // Clears entire navigation stack
         );
       }
     } catch (e) {
@@ -57,19 +62,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _handleEmailLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-    await _handleLogin(
-      () => ref
-          .read(authServiceProvider)
-          .signIn(_emailController.text.trim(), _passwordController.text),
-    );
-  }
-
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -79,7 +76,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("ThachinChord"),
+        title: const Text("Create Account"),
         centerTitle: true,
         elevation: 0,
       ),
@@ -92,10 +89,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
-                Icon(Icons.music_note, size: 90, color: theme.primaryColor),
+                Icon(Icons.music_note, size: 80, color: theme.primaryColor),
                 const SizedBox(height: 16),
                 Text(
-                  "Welcome back",
+                  "Join ThachinChord",
                   style: theme.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -103,7 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  "Sign in to continue to ThachinChord",
+                  "Create your account to get started",
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.grey.shade600,
                   ),
@@ -111,7 +108,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // Email field
+                // Email Field
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -140,12 +137,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // Password field
+                // Password Field
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  autofillHints: const [AutofillHints.password],
-                  textInputAction: TextInputAction.done,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     labelText: "Password",
                     prefixIcon: const Icon(Icons.lock_outlined),
@@ -174,27 +170,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                 ),
 
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Forgot password coming soon..."),
-                        ),
-                      );
-                    },
-                    child: const Text("Forgot password?"),
+                const SizedBox(height: 20),
+
+                // Confirm Password Field
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: "Confirm Password",
+                    prefixIcon: const Icon(Icons.lock_outlined),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      onPressed: _toggleConfirmPasswordVisibility,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: theme.colorScheme.surface,
                   ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please confirm your password';
+                    }
+                    if (value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 40),
 
-                // Email login button
+                // Sign Up Button
                 SizedBox(
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _handleEmailLogin,
+                    onPressed: _isLoading ? null : _handleSignUp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.primaryColor,
                       foregroundColor: Colors.white,
@@ -213,7 +230,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           )
                         : const Text(
-                            "Sign in",
+                            "Create Account",
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -224,99 +241,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const SizedBox(height: 32),
 
-                // Divider
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: Colors.grey.shade400)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        "or continue with",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: Colors.grey.shade400)),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Google Login
-                SizedBox(
-                  height: 56,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.g_mobiledata, size: 28),
-                    label: const Text(
-                      "Continue with Google",
-                      style: TextStyle(fontSize: 17),
-                    ),
-                    onPressed: _isLoading
-                        ? null
-                        : () => _handleLogin(
-                            () => ref
-                                .read(authServiceProvider)
-                                .signInWithGoogle(),
-                          ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Colors.grey.shade400),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Facebook Login
-                SizedBox(
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.facebook, size: 28),
-                    label: const Text(
-                      "Continue with Facebook",
-                      style: TextStyle(fontSize: 17),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1877F2),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _isLoading
-                        ? null
-                        : () => _handleLogin(
-                            () => ref
-                                .read(authServiceProvider)
-                                .signInWithFacebook(),
-                          ),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                // Sign up link
+                // Already have an account?
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      "Don't have an account?",
+                      "Already have an account?",
                       style: theme.textTheme.bodyMedium,
                     ),
                     TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const SignUpScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.pop(context),
                       child: const Text(
-                        "Sign up",
+                        "Sign in",
                         style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
