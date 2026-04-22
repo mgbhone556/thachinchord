@@ -31,3 +31,7 @@ final isAdminProvider = FutureProvider<bool>((ref) async {
       .get();
   return doc.data()?['role'] == 'admin';
 });
+// User ရဲ့ Data အားလုံးကို Watch နေမည့် Provider
+final userDataProvider = StreamProvider<Map<String, dynamic>?>((ref) {
+  return ref.watch(authServiceProvider).userStream();
+});

@@ -69,32 +69,32 @@ class AuthService {
     }
   }
 
-  // Facebook Sign In Logic
-  Future<UserCredential?> signInWithFacebook() async {
-    try {
-      final LoginResult result = await FacebookAuth.instance.login();
+  // // Facebook Sign In Logic
+  // Future<UserCredential?> signInWithFacebook() async {
+  //   try {
+  //     final LoginResult result = await FacebookAuth.instance.login();
 
-      if (result.status == LoginStatus.success) {
-        final OAuthCredential credential = FacebookAuthProvider.credential(
-          result.accessToken!.tokenString,
-        );
+  //     if (result.status == LoginStatus.success) {
+  //       final OAuthCredential credential = FacebookAuthProvider.credential(
+  //         result.accessToken!.tokenString,
+  //       );
 
-        UserCredential userCredential = await _auth.signInWithCredential(
-          credential,
-        );
+  //       UserCredential userCredential = await _auth.signInWithCredential(
+  //         credential,
+  //       );
 
-        if (userCredential.user != null) {
-          await _updateUserData(userCredential.user!);
-        }
+  //       if (userCredential.user != null) {
+  //         await _updateUserData(userCredential.user!);
+  //       }
 
-        return userCredential;
-      }
-      return null;
-    } catch (e) {
-      print("Facebook Sign-In Error: $e");
-      rethrow;
-    }
-  }
+  //       return userCredential;
+  //     }
+  //     return null;
+  //   } catch (e) {
+  //     print("Facebook Sign-In Error: $e");
+  //     rethrow;
+  //   }
+  // }
 
   // Firestore ထဲတွင် User Role သတ်မှတ်ခြင်း (New)
   Future<void> _updateUserData(User user) async {
@@ -120,5 +120,18 @@ class AuthService {
     } catch (e) {
       print("Logout Error: $e");
     }
+  }
+
+  // User data ကို stream အနေနဲ့ နားထောင်ရန်
+  Stream<Map<String, dynamic>?> userStream() {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      return _db
+          .collection('users')
+          .doc(user.uid)
+          .snapshots()
+          .map((doc) => doc.data());
+    }
+    return Stream.value(null);
   }
 }
