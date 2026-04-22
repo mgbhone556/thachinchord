@@ -2,17 +2,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  // လက်ရှိ user ရဲ့ အခြေအနေကို နားထောင်ရန်
+  // Listen to auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // အကောင့်သစ်ဖွင့်ရန် (Sign Up)
+  // Sign Up with Email/Password
   Future<UserCredential?> signUp(String email, String password) async {
     try {
       UserCredential credential = await _auth.createUserWithEmailAndPassword(
@@ -28,7 +27,7 @@ class AuthService {
     }
   }
 
-  // Email/Password ဖြင့် Login ဝင်ရန်
+  // Sign In with Email/Password
   Future<UserCredential?> signIn(String email, String password) async {
     try {
       return await _auth.signInWithEmailAndPassword(
@@ -40,7 +39,6 @@ class AuthService {
     }
   }
 
-  // Google Sign In Logic (Fixed)
   Future<UserCredential?> signInWithGoogle() async {
     try {
       await _googleSignIn.initialize();
@@ -69,34 +67,12 @@ class AuthService {
     }
   }
 
-  // // Facebook Sign In Logic
-  // Future<UserCredential?> signInWithFacebook() async {
-  //   try {
-  //     final LoginResult result = await FacebookAuth.instance.login();
+  Future<void> signOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+  }
 
-  //     if (result.status == LoginStatus.success) {
-  //       final OAuthCredential credential = FacebookAuthProvider.credential(
-  //         result.accessToken!.tokenString,
-  //       );
-
-  //       UserCredential userCredential = await _auth.signInWithCredential(
-  //         credential,
-  //       );
-
-  //       if (userCredential.user != null) {
-  //         await _updateUserData(userCredential.user!);
-  //       }
-
-  //       return userCredential;
-  //     }
-  //     return null;
-  //   } catch (e) {
-  //     print("Facebook Sign-In Error: $e");
-  //     rethrow;
-  //   }
-  // }
-
-  // Firestore ထဲတွင် User Role သတ်မှတ်ခြင်း (New)
+  // Update User Data in Firestore
   Future<void> _updateUserData(User user) async {
     final userRef = _db.collection('users').doc(user.uid);
     final doc = await userRef.get();
@@ -105,33 +81,20 @@ class AuthService {
       await userRef.set({
         'uid': user.uid,
         'email': user.email,
-        'role': 'user', // Default က ရိုးရိုး user ဖြစ်သည်
+        'role': 'user', // Default role
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
   }
 
-  // Logout ထွက်ရန်
-  Future<void> signOut() async {
-    try {
-      await _googleSignIn.signOut();
-      await FacebookAuth.instance.logOut();
-      await _auth.signOut();
-    } catch (e) {
-      print("Logout Error: $e");
-    }
-  }
-
-  // User data ကို stream အနေနဲ့ နားထောင်ရန်
+  // Reactive User Data Stream (Fixed)
+  // This version listens to the auth state first, then gets the Firestore data
   Stream<Map<String, dynamic>?> userStream() {
-    User? user = _auth.currentUser;
-    if (user != null) {
-      return _db
-          .collection('users')
-          .doc(user.uid)
-          .snapshots()
-          .map((doc) => doc.data());
-    }
-    return Stream.value(null);
+    return _auth.authStateChanges().asyncMap((user) async {
+      if (user == null) return null;
+
+      final doc = await _db.collection('users').doc(user.uid).get();
+      return doc.data();
+    });
   }
 }
