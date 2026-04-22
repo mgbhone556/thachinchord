@@ -7,11 +7,9 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-
-  // Listen to auth state changes
+  Stream<User?> get userStatus => _auth.authStateChanges();
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Sign Up with Email/Password
   Future<UserCredential?> signUp(String email, String password) async {
     try {
       UserCredential credential = await _auth.createUserWithEmailAndPassword(
@@ -72,23 +70,21 @@ class AuthService {
     await _auth.signOut();
   }
 
-  // Update User Data in Firestore
   Future<void> _updateUserData(User user) async {
     final userRef = _db.collection('users').doc(user.uid);
     final doc = await userRef.get();
-
     if (!doc.exists) {
       await userRef.set({
         'uid': user.uid,
         'email': user.email,
-        'role': 'user', // Default role
+        'role': 'user',
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+    } else {
+      await userRef.update({'lastSignIn': FieldValue.serverTimestamp()});
     }
   }
 
-  // Reactive User Data Stream (Fixed)
-  // This version listens to the auth state first, then gets the Firestore data
   Stream<Map<String, dynamic>?> userStream() {
     return _auth.authStateChanges().asyncMap((user) async {
       if (user == null) return null;
