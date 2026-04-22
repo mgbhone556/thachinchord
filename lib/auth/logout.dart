@@ -1,25 +1,28 @@
-// logout.dart ထဲတွင် ပြင်ရန်
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:thachinchord/auth/login.dart';
 import 'package:thachinchord/provider/auth_provider.dart';
 
 class LogoutService {
   static Future<void> logout(BuildContext context, WidgetRef ref) async {
-    // 1. အတည်ပြုချက်မေးမယ် (Optional ဒါပေမဲ့ ပိုကောင်းပါတယ်)
+    // 1. Show Confirmation Dialog
     bool confirm =
         await showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text("Logout"),
-            content: const Text("အကောင့်ထဲမှ ထွက်ရန် သေချာပါသလား?"),
+            content: const Text("Are you sure you want to logout?"),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text("မထွက်ပါ"),
+                child: const Text("Cancel"),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text("ထွက်မည်"),
+                child: const Text(
+                  "Logout",
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
           ),
@@ -28,21 +31,30 @@ class LogoutService {
 
     if (!confirm) return;
 
+    // Show Loading Circle while logging out
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
-      // 2. Auth State ကို Clear လုပ်ရန် (Firebase ကနေ Sign Out လုပ်ခြင်း)
+      // 2. Clear Auth State (Firebase Sign Out)
       await ref.read(authServiceProvider).signOut();
 
-      // 3. Navigator ကို သုံးပြီး အရင် Screen အဟောင်းတွေ အကုန်ဖြတ်ထုတ်မယ်
-      // အကယ်၍ main.dart က authState ကို watch နေရင် ဒီ step က option ဖြစ်ပေမယ့်
-      // Memory ထဲမှာ ကျန်မနေအောင် လုပ်ပေးတာ ပိုကောင်းပါတယ်
+      // 3. Navigate to Login Screen and clear all previous routes
       if (context.mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
       }
     } catch (e) {
       if (context.mounted) {
+        Navigator.pop(context); // Close loading circle
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Logout မအောင်မြင်ပါ: $e')));
+        ).showSnackBar(SnackBar(content: Text('Logout failed: $e')));
       }
     }
   }
